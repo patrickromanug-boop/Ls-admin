@@ -102,6 +102,17 @@ export default function AdminDashboard() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Safely parse JSON response, fallback to text and throw with details
+  const safeJson = async (res: Response) => {
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      console.error('Response was not JSON:', text.substring(0, 200));
+      throw new Error(`Server returned non-JSON response (status ${res.status}). Check console for details.`);
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -116,7 +127,7 @@ export default function AdminDashboard() {
 
       try {
         const adRes = await fetch('/api/ads');
-        const adJson = await adRes.json();
+        const adJson = await safeJson(adRes);
         if (adJson.ads) setCompanyAds(adJson.ads);
       } catch (e) {
         const { data: adsData } = await supabase.from('company_ads').select('*').order('created_at', { ascending: false });
@@ -151,9 +162,13 @@ export default function AdminDashboard() {
         }),
       });
 
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || 'Failed to create job');
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Job API error:', errorText);
+        throw new Error(`Server error ${res.status}: ${errorText.substring(0, 100)}`);
+      }
 
+      const resData = await safeJson(res);
       showNotification('✅ New job published successfully!');
       setShowAddJobModal(false);
       setNewJobTitle('');
@@ -174,9 +189,11 @@ export default function AdminDashboard() {
 
     try {
       const res = await fetch(`/api/jobs?id=${jobId}`, { method: 'DELETE' });
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || 'Failed to delete job');
-
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Deletion failed (${res.status}): ${errorText.substring(0, 100)}`);
+      }
+      const resData = await safeJson(res);
       showNotification('🗑️ Job deleted permanently.');
       fetchData();
     } catch (err: any) {
@@ -207,8 +224,13 @@ export default function AdminDashboard() {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to post advertisement');
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Ad API error:', errorText);
+        throw new Error(`Server error ${res.status}: ${errorText.substring(0, 100)}`);
+      }
 
+      const resData = await safeJson(res);
       showNotification('🚀 Company advertisement published live!');
       setShowAddAdModal(false);
       setAdCompanyName('');
@@ -229,7 +251,11 @@ export default function AdminDashboard() {
     if (!confirm('Are you sure you want to delete this company ad?')) return;
     try {
       const res = await fetch(`/api/ads?id=${adId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete ad');
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Deletion failed (${res.status}): ${errorText.substring(0, 100)}`);
+      }
+      const resData = await safeJson(res);
       showNotification('🗑️ Advertisement removed.');
       fetchData();
     } catch (err: any) {
@@ -242,7 +268,6 @@ export default function AdminDashboard() {
     setShowJobDetailsModal(true);
   };
 
-  // Helpers with fallbacks for missing data
   const getJobTitle = (jobId: string) => {
     const job = jobs.find(j => j.id === jobId);
     return job?.title || '—';
@@ -254,7 +279,6 @@ export default function AdminDashboard() {
     return profile?.full_name || '—';
   };
 
-  // Null‑safe filters
   const filteredJobs = jobs.filter(j =>
     (j.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (j.organization || '').toLowerCase().includes(searchTerm.toLowerCase())
