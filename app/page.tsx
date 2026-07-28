@@ -162,7 +162,7 @@ export default function AdminDashboard() {
       fetchData();
     } catch (err: any) {
       alert('Error creating job: ' + err.message);
-    } fontally {
+    } finally {
       setSubmittingJob(false);
     }
   };
