@@ -14,8 +14,6 @@ import {
   Building2,
   Trash2,
   Megaphone,
-  Globe,
-  Phone,
   ShieldCheck,
   Image as ImageIcon,
   Eye,
@@ -244,28 +242,37 @@ export default function AdminDashboard() {
     setShowJobDetailsModal(true);
   };
 
-  // Helpers for displaying job title in applications table
-  const getJobTitle = (jobId: string) => jobs.find(j => j.id === jobId)?.title || jobId;
-  const getUserName = (userId: string) => profiles.find(p => p.id === userId)?.full_name || userId;
+  // Helpers with fallbacks for missing data
+  const getJobTitle = (jobId: string) => {
+    const job = jobs.find(j => j.id === jobId);
+    return job?.title || '—';
+  };
 
+  const getUserName = (userId: string) => {
+    if (!userId) return 'Unknown';
+    const profile = profiles.find(p => p.id === userId);
+    return profile?.full_name || '—';
+  };
+
+  // Null‑safe filters
   const filteredJobs = jobs.filter(j =>
-    j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    j.organization.toLowerCase().includes(searchTerm.toLowerCase())
+    (j.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (j.organization || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredApplications = applications.filter(a =>
-    getJobTitle(a.job_id).toLowerCase().includes(searchTerm.toLowerCase()) ||
-    getUserName(a.user_id).toLowerCase().includes(searchTerm.toLowerCase())
+    (getJobTitle(a.job_id) || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (getUserName(a.user_id) || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredProfiles = profiles.filter(p =>
-    p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.phone.toLowerCase().includes(searchTerm.toLowerCase())
+    (p.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.phone || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredAds = companyAds.filter(ad =>
-    ad.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ad.headline.toLowerCase().includes(searchTerm.toLowerCase())
+    (ad.company_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (ad.headline || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const stats = [
@@ -391,16 +398,16 @@ export default function AdminDashboard() {
                     <tbody className="divide-y divide-slate-700/50">
                       {filteredJobs.map((job) => (
                         <tr key={job.id} className="hover:bg-slate-700/20 transition-colors">
-                          <td className="p-4 font-medium text-white">{job.title}</td>
-                          <td className="p-4 text-slate-300">{job.organization}</td>
+                          <td className="p-4 font-medium text-white">{job.title || '—'}</td>
+                          <td className="p-4 text-slate-300">{job.organization || '—'}</td>
                           <td className="p-4 text-slate-400">
-                            {new Date(job.deadline).toLocaleDateString()}
+                            {job.deadline ? new Date(job.deadline).toLocaleDateString() : 'N/A'}
                           </td>
                           <td className="p-4">
                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                               job.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'
                             }`}>
-                              {job.status}
+                              {job.status || 'unknown'}
                             </span>
                           </td>
                           <td className="p-4 text-right">
@@ -452,12 +459,15 @@ export default function AdminDashboard() {
                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                               app.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
                               app.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
-                              'bg-red-500/20 text-red-400'
+                              app.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                              'bg-slate-500/20 text-slate-400'
                             }`}>
-                              {app.status}
+                              {app.status || 'unknown'}
                             </span>
                           </td>
-                          <td className="p-4 text-slate-400">{new Date(app.applied_at).toLocaleDateString()}</td>
+                          <td className="p-4 text-slate-400">
+                            {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : 'N/A'}
+                          </td>
                         </tr>
                       ))}
                       {filteredApplications.length === 0 && (
@@ -485,16 +495,18 @@ export default function AdminDashboard() {
                     <tbody className="divide-y divide-slate-700/50">
                       {filteredProfiles.map((profile) => (
                         <tr key={profile.id} className="hover:bg-slate-700/20">
-                          <td className="p-4 font-medium text-white">{profile.full_name}</td>
-                          <td className="p-4 text-slate-300">{profile.phone}</td>
+                          <td className="p-4 font-medium text-white">{profile.full_name || '—'}</td>
+                          <td className="p-4 text-slate-300">{profile.phone || '—'}</td>
                           <td className="p-4">
                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                               profile.role === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-500/20 text-slate-400'
                             }`}>
-                              {profile.role}
+                              {profile.role || 'user'}
                             </span>
                           </td>
-                          <td className="p-4 text-slate-400">{new Date(profile.created_at).toLocaleDateString()}</td>
+                          <td className="p-4 text-slate-400">
+                            {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'}
+                          </td>
                         </tr>
                       ))}
                       {filteredProfiles.length === 0 && (
@@ -522,13 +534,13 @@ export default function AdminDashboard() {
                     <tbody className="divide-y divide-slate-700/50">
                       {filteredAds.map((ad) => (
                         <tr key={ad.id} className="hover:bg-slate-700/20">
-                          <td className="p-4 font-medium text-white">{ad.company_name}</td>
-                          <td className="p-4 text-slate-300 max-w-xs truncate">{ad.headline}</td>
+                          <td className="p-4 font-medium text-white">{ad.company_name || '—'}</td>
+                          <td className="p-4 text-slate-300 max-w-xs truncate">{ad.headline || '—'}</td>
                           <td className="p-4">
                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                               ad.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'
                             }`}>
-                              {ad.status}
+                              {ad.status || 'unknown'}
                             </span>
                           </td>
                           <td className="p-4 text-right">
@@ -644,7 +656,7 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">{selectedJobDetails.title}</h2>
+              <h2 className="text-2xl font-bold text-white">{selectedJobDetails.title || '—'}</h2>
               <button onClick={() => setShowJobDetailsModal(false)} className="text-slate-400 hover:text-white">
                 <X className="w-6 h-6" />
               </button>
@@ -652,17 +664,23 @@ export default function AdminDashboard() {
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-slate-400">Organization</p>
-                <p className="text-white font-medium flex items-center gap-2"><Building2 className="w-4 h-4 text-blue-400" /> {selectedJobDetails.organization}</p>
+                <p className="text-white font-medium flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-blue-400" /> {selectedJobDetails.organization || '—'}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-slate-400">Deadline</p>
-                <p className="text-white font-medium flex items-center gap-2"><Clock className="w-4 h-4 text-amber-400" /> {new Date(selectedJobDetails.deadline).toLocaleDateString()}</p>
+                <p className="text-white font-medium flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-400" /> {selectedJobDetails.deadline ? new Date(selectedJobDetails.deadline).toLocaleDateString() : 'N/A'}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-slate-400">Status</p>
                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
                   selectedJobDetails.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'
-                }`}>{selectedJobDetails.status}</span>
+                }`}>
+                  {selectedJobDetails.status || 'unknown'}
+                </span>
               </div>
               <div>
                 <p className="text-sm text-slate-400">Purpose</p>
@@ -673,7 +691,7 @@ export default function AdminDashboard() {
                 <p className="text-white mt-1 whitespace-pre-wrap">{selectedJobDetails.requirements || 'Not specified'}</p>
               </div>
               <div className="text-xs text-slate-500 pt-2 border-t border-slate-700">
-                Created {new Date(selectedJobDetails.created_at).toLocaleString()}
+                Created {selectedJobDetails.created_at ? new Date(selectedJobDetails.created_at).toLocaleString() : 'unknown'}
               </div>
             </div>
           </div>
